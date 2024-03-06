@@ -1,75 +1,67 @@
-<script setup>
-import { ref, watch, onBeforeMount } from "vue";
-import addInput from "./components/todoInput.vue";
-import todoList from "./components/todoList.vue";
-import editTodoComponent from "./components/editTodo.vue";
-const text = ref("");
-const editText = ref("");
-
-const todos = ref([]);
-
-
-let editTaskItem;
-function editTodo(todoItem) {
-  editTaskItem = todoItem;
-  editText.value = todoItem.task;
-}
-
-function changeTodo() {
-  todos.value = todos.value.map((todo) => {
-      if(todo.task == editTaskItem.task) {
-        todo.task = editText.value;
-      }
-      return todo;
-  });
-  editTaskItem = null;
-  editText.value = "";
-}
-
-
-
-function completeTask(todoItem) {
-  todos.value = todos.value.map((todo) => {
-      if(todo.task == todoItem.task) {
-        todo.completed = !todo.completed;
-      }
-      return todo;
-  })
-}
-
-function removeTask(todoItem) {
-  todos.value = todos.value.filter(function (t) {
-      return t.task != todoItem.task
-  });
-}
-
-watch(todos,() => {
-  localStorage.setItem("gorevler",JSON.stringify(todos.value));
-});
-
-onBeforeMount(() => {
-  todos.value = JSON.parse(localStorage.getItem("gorevler")) ?? [];
-})
-
-
-function todoGuncelle(yenitodo) {
-  todos.value = [...todos.value,yenitodo];
-}
-
-
-function setNewValueForEditText(newValue) {
-  editText.value = newValue;
-}
-
-</script>
-
 <template>
-
-  <addInput @guncelle="todoGuncelle($event)" />
-  
+  <input type="text" class="text-todo" v-model="text" @keydown.enter="addTodo">
+  <button @click="addTodo">Yeni Görev Ekle</button>
   <div>
-    <todoList :todos="todos" @editTodo="editTodo($event)" @completeTask="completeTask($event)" @remove="removeTask($event)" />
-    <editTodoComponent @changeTodo="changeTodo()" :text="editText" @updateEditText="setNewValueForEditText($event)"  />
+      <ul>
+          <li v-for="todo in todos" :key="todo.id">
+              <h2>{{ todo.message }}</h2>
+              <button @click="editTodo(todo)">Güncelle</button>
+              <button @click="completeTodo(todo.id)">{{ todo.completed ? 'Tamamlandı' : 'Tamamlanmayı Bekliyor' }}</button>
+              <button @click="deleteTodo(todo.id)">Sil</button>
+          </li>
+      </ul>
   </div>
 
+  <input type="text" class="text-todo" v-model="editTodoHolder.message">
+  <button @click="saveTodo">Düzenle</button>
+
 </template>
+
+
+<script setup>
+import { computed, ref, reactive, onBeforeMount } from 'vue';
+import { useTodoStore } from './stores/todoStore';
+
+const todoStore = useTodoStore();
+
+onBeforeMount(todoStore.syncronizeLocalStorage)
+
+const todos = computed(() => todoStore.todos);
+
+const text = ref("");
+const editTodoHolder = reactive({
+  id: 0,
+  message: ""
+});
+
+function addTodo() {
+  //NOT: Veri eklemeyi sağlar.
+  todoStore.addTodo(text.value);
+  text.value = "";
+}
+
+function completeTodo(id) {
+  //NOT: Tamamlanmak istenen veriyi id parametresine göre tamamlar.
+  todoStore.completeTodo(id);
+}
+
+function deleteTodo(id) {
+  //NOT: Silinmek istenen veriyi id parametresine göre siler.
+  todoStore.removeTodo(id);
+}
+
+function editTodo(todo) {
+  editTodoHolder.message = todo.message;
+  editTodoHolder.id = todo.id;
+  //NOT: Reactive değerlerin .value özelliği olmaz.
+}
+
+function saveTodo() {
+  //NOT: Güncellenmek istenen veriyi günceller.
+  todoStore.editTodo(editTodoHolder.id,editTodoHolder.message);
+  editTodoHolder.message = "";
+  editTodoHolder.id = 0;
+}
+
+
+</script>
