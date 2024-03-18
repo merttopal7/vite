@@ -1,8 +1,22 @@
 <script setup>
-import { ref, watch, onBeforeMount } from "vue";
+import { ref, watch, onBeforeMount,computed} from "vue";
 import addInput from "./components/todoInput.vue";
 import todoList from "./components/todoList.vue";
 import editTodoComponent from "./components/editTodo.vue";
+import {useStore} from "vuex";
+const myStore=useStore();
+
+
+
+
+const todoGetir=computed(
+  function(){
+    return myStore.getters.getTodos;
+  }
+)
+
+
+
 const text = ref("");
 const editText = ref("");
 
@@ -29,31 +43,25 @@ function changeTodo() {
 
 
 function completeTask(todoItem) {
-  todos.value = todos.value.map((todo) => {
-      if(todo.task == todoItem.task) {
-        todo.completed = !todo.completed;
-      }
-      return todo;
-  })
+myStore.dispatch("changeTask",todoItem);
 }
 
 function removeTask(todoItem) {
-  todos.value = todos.value.filter(function (t) {
-      return t.task != todoItem.task
-  });
+myStore.dispatch("deleteTask",todoItem)
 }
 
-watch(todos,() => {
-  localStorage.setItem("gorevler",JSON.stringify(todos.value));
-});
+watch(()=>myStore.getters.getTodos,() => {
+  localStorage.setItem("gorevler",JSON.stringify(myStore.getters.getTodos));
+},{deep:true})
 
 onBeforeMount(() => {
-  todos.value = JSON.parse(localStorage.getItem("gorevler")) ?? [];
+  myStore.dispatch("kaydet",JSON.parse(localStorage.getItem("gorevler")) ?? []) 
 })
 
 
-function todoGuncelle(yenitodo) {
-  todos.value = [...todos.value,yenitodo];
+function todoEkle(yenitodo) {
+  myStore.dispatch("addTodo",yenitodo)
+  // dispatch bir aksiyon tetikler
 }
 
 
@@ -65,11 +73,13 @@ function setNewValueForEditText(newValue) {
 
 <template>
 
-  <addInput @guncelle="todoGuncelle($event)" />
+  <addInput @guncelle="todoEkle($event)" />
   
   <div>
-    <todoList :todos="todos" @editTodo="editTodo($event)" @completeTask="completeTask($event)" @remove="removeTask($event)" />
+    <todoList :todos="todoGetir" @editTodo="editTodo($event)" @completeTask="completeTask($event)" @remove="removeTask($event)" />
     <editTodoComponent @changeTodo="changeTodo()" :text="editText" @updateEditText="setNewValueForEditText($event)"  />
   </div>
 
+
+{{ todoGetir }}
 </template>
